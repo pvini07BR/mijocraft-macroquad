@@ -21,17 +21,17 @@ impl Player {
     pub fn input(&mut self) {
         let vel = 5.0 * TILE_SIZE as f32;
 
-        if is_key_down(KeyCode::Right) {
+        if is_key_down(KeyCode::D) || is_key_down(KeyCode::Right) {
             self.velocity.x = 1.0;
-        } else if is_key_down(KeyCode::Left) {
+        } else if is_key_down(KeyCode::A) || is_key_down(KeyCode::Left) {
             self.velocity.x = -1.0;
         } else {
             self.velocity.x = 0.0;
         }
 
-        if is_key_down(KeyCode::Up) {
+        if is_key_down(KeyCode::W) || is_key_down(KeyCode::Up) {
             self.velocity.y = 1.0;
-        } else if is_key_down(KeyCode::Down) {
+        } else if is_key_down(KeyCode::S) || is_key_down(KeyCode::Down) {
             self.velocity.y = -1.0;
         } else {
             self.velocity.y = 0.0;
