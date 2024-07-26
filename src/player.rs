@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
 
-use crate::{aabb::Aabb, chunk::TILE_SIZE, chunk_manager::ChunkManager};
+use crate::{aabb::Aabb, chunk::{Chunk, TILE_SIZE}, chunk_manager::ChunkManager};
 
 pub struct Player {
     pub velocity: Vec2,
@@ -35,7 +35,7 @@ impl Player {
             self.velocity.y = 0.0;
         }
 
-        self.velocity = self.velocity.normalize() * (5.0 * TILE_SIZE as f32);
+        self.velocity = self.velocity.normalize_or_zero() * (5.0 * TILE_SIZE as f32);
     }
 
     pub fn update(&mut self, chunk_manager: &ChunkManager) {
@@ -44,67 +44,37 @@ impl Player {
         let top_right = self.aabb.position + self.aabb.half_size;
         let top_left = self.aabb.position + vec2(-self.aabb.half_size.x, self.aabb.half_size.y);
 
-        let do_the_col =  |is_x: bool, velocity: &Vec2, first: &Vec2, second: &Vec2, add: bool| -> Option<f32> {
-            let next_first = if is_x { first.x + (velocity.x * get_frame_time()) } else { first.y + (velocity.y * get_frame_time()) };
-            let next_second = if is_x { second.x + (velocity.x * get_frame_time()) } else { second.y + (velocity.y * get_frame_time()) };
-
-            let block_next_first = (next_first / TILE_SIZE as f32).floor();
-            let block_next_second = (next_second / TILE_SIZE as f32).floor();
-
-            if is_x {
-                if chunk_manager.get_block(ivec2(block_next_first as i32, (first.y / TILE_SIZE as f32).floor() as i32)) > 0 {
-                    let gap = ((block_next_first * TILE_SIZE as f32) + (TILE_SIZE as f32 * add as i32 as f32)) - first.x;
-                    return Some(gap);
-                } else if chunk_manager.get_block(ivec2(block_next_second as i32, (second.y / TILE_SIZE as f32).floor() as i32)) > 0 {
-                    let gap = ((block_next_second * TILE_SIZE as f32) + (TILE_SIZE as f32 * add as i32 as f32)) - second.x;
-                    return Some(gap);
-                } else {
-                    return None;
-                }
+        let get_corner_overlap = |corner: Vec2, add_x: bool, add_y: bool, velocity: Vec2| -> Option<(Vec2, Vec2)> {
+            let next_frame = corner + (velocity * get_frame_time());
+            if chunk_manager.get_block((next_frame / TILE_SIZE as f32).floor().as_ivec2()) > 0 {
+                let to_block = (next_frame / TILE_SIZE as f32).floor() * TILE_SIZE as f32;
+                let added = to_block + vec2(TILE_SIZE as f32 * add_x as i32 as f32, TILE_SIZE as f32 * add_y as i32 as f32);
+                return Some((Vec2::abs(next_frame - added), added));
             } else {
-                if chunk_manager.get_block(ivec2((first.x / TILE_SIZE as f32).floor() as i32, block_next_first as i32)) > 0 {
-                    let gap = ((block_next_first * TILE_SIZE as f32) + (TILE_SIZE as f32 * add as i32 as f32)) - first.y;
-                    return Some(gap);
-                } else if chunk_manager.get_block(ivec2((second.x / TILE_SIZE as f32).floor() as i32, block_next_second as i32)) > 0 {
-                    let gap = ((block_next_second * TILE_SIZE as f32) + (TILE_SIZE as f32 * add as i32 as f32)) - second.y;
-                    return Some(gap);
-                } else {
-                    return None;
+                return None;
+            }
+        };
+
+        let mut solve_collision = |corner: Vec2, add_x: bool, add_y: bool| {
+            if let Some((overlap, collided_block_pos)) = get_corner_overlap(corner, add_x, add_y, self.velocity) {
+                //println!("{}", collided_block_pos);
+                let min = overlap.x.min(overlap.y);
+                if min == overlap.x {
+                    self.velocity.x = 0.0;
+                    self.aabb.position.x -= corner.x - collided_block_pos.x;
+                } else if min == overlap.y {
+                    self.velocity.y = 0.0;
+                    self.aabb.position.y -= corner.y - collided_block_pos.y;
                 }
             }
         };
 
-        if self.velocity.x > 0.0 {
-            if let Some(gap) = do_the_col(true, &self.velocity, &bottom_right, &top_right, false) {
-                self.velocity.x = 0.0;
-                self.aabb.position.x += gap - 0.0001;
-            } else {
-                self.aabb.position.x += self.velocity.x * get_frame_time();
-            }
-        } else if self.velocity.x < 0.0 {
-            if let Some(gap) = do_the_col(true, &self.velocity, &bottom_left, &top_left, true) {
-                self.velocity.x = 0.0;
-                self.aabb.position.x += gap;
-            } else {
-                self.aabb.position.x += self.velocity.x * get_frame_time();
-            }
-        }
+        solve_collision(bottom_left, true, true);
+        solve_collision(bottom_right, false, true);
+        solve_collision(top_right, false, false);
+        solve_collision(top_left, true, false);
 
-        if self.velocity.y > 0.0 {
-            if let Some(gap) = do_the_col(false, &self.velocity, &top_left, &top_right, false) {
-                self.velocity.y = 0.0;
-                self.aabb.position.y += gap - 0.0001;
-            } else {
-                self.aabb.position.y += self.velocity.y * get_frame_time();
-            }
-        } else if self.velocity.y < 0.0 {
-            if let Some(gap) = do_the_col(false, &self.velocity, &bottom_left, &bottom_right, true) {
-                self.velocity.y = 0.0;
-                self.aabb.position.y += gap;
-            } else {
-                self.aabb.position.y += self.velocity.y * get_frame_time();
-            }
-        }
+        self.aabb.position += self.velocity * get_frame_time();
     }
 
     pub fn draw(&self) {

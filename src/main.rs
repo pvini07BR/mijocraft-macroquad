@@ -54,6 +54,9 @@ async fn main() {
         chunk_manager.draw();
         player.draw();
 
+        set_default_camera();
+        draw_text(format!("FPS: {}", get_fps()).as_str(), 0.0, 16.0, 24.0, BLACK);
+
         next_frame().await;
     }
 }
