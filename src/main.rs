@@ -8,18 +8,17 @@ use chunk_manager::ChunkManager;
 use macroquad::prelude::*;
 
 use player::Player;
-use ::rand::prelude::*;
 
 #[macroquad::main("teste")]
 async fn main() {
     let mut chunk_manager = ChunkManager::new();
 
-    let mut blocks = [false; CHUNK_AREA];
+    let mut blocks = [0; CHUNK_AREA];
     for i in 0..CHUNK_AREA {
-        blocks[i] = random::<bool>();
+        blocks[i] = rand::gen_range(0, 8);
     }
 
-    chunk_manager.create_chunk(IVec2::ZERO, blocks);
+    chunk_manager.create_chunk(IVec2::ZERO, blocks).await;
 
     let mut player = Player::new(Vec2::ZERO);
 

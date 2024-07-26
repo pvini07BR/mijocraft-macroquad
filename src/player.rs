@@ -19,8 +19,6 @@ impl Player {
     }
 
     pub fn input(&mut self) {
-        let vel = 5.0 * TILE_SIZE as f32;
-
         if is_key_down(KeyCode::D) || is_key_down(KeyCode::Right) {
             self.velocity.x = 1.0;
         } else if is_key_down(KeyCode::A) || is_key_down(KeyCode::Left) {
@@ -37,7 +35,7 @@ impl Player {
             self.velocity.y = 0.0;
         }
 
-        self.velocity = self.velocity.normalize() * vel;
+        self.velocity = self.velocity.normalize() * (5.0 * TILE_SIZE as f32);
     }
 
     pub fn update(&mut self, chunk_manager: &ChunkManager) {
@@ -54,20 +52,20 @@ impl Player {
             let block_next_second = (next_second / TILE_SIZE as f32).floor();
 
             if is_x {
-                if chunk_manager.get_block(ivec2(block_next_first as i32, (first.y / TILE_SIZE as f32).floor() as i32)) {
+                if chunk_manager.get_block(ivec2(block_next_first as i32, (first.y / TILE_SIZE as f32).floor() as i32)) > 0 {
                     let gap = ((block_next_first * TILE_SIZE as f32) + (TILE_SIZE as f32 * add as i32 as f32)) - first.x;
                     return Some(gap);
-                } else if chunk_manager.get_block(ivec2(block_next_second as i32, (second.y / TILE_SIZE as f32).floor() as i32)) {
+                } else if chunk_manager.get_block(ivec2(block_next_second as i32, (second.y / TILE_SIZE as f32).floor() as i32)) > 0 {
                     let gap = ((block_next_second * TILE_SIZE as f32) + (TILE_SIZE as f32 * add as i32 as f32)) - second.x;
                     return Some(gap);
                 } else {
                     return None;
                 }
             } else {
-                if chunk_manager.get_block(ivec2((first.x / TILE_SIZE as f32).floor() as i32, block_next_first as i32)) {
+                if chunk_manager.get_block(ivec2((first.x / TILE_SIZE as f32).floor() as i32, block_next_first as i32)) > 0 {
                     let gap = ((block_next_first * TILE_SIZE as f32) + (TILE_SIZE as f32 * add as i32 as f32)) - first.y;
                     return Some(gap);
-                } else if chunk_manager.get_block(ivec2((second.x / TILE_SIZE as f32).floor() as i32, block_next_second as i32)) {
+                } else if chunk_manager.get_block(ivec2((second.x / TILE_SIZE as f32).floor() as i32, block_next_second as i32)) > 0 {
                     let gap = ((block_next_second * TILE_SIZE as f32) + (TILE_SIZE as f32 * add as i32 as f32)) - second.y;
                     return Some(gap);
                 } else {

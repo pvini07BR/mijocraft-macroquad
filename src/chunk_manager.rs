@@ -19,18 +19,18 @@ impl ChunkManager {
         }
     }
 
-    pub fn get_block(&self, block_position: IVec2) -> bool {
+    pub fn get_block(&self, block_position: IVec2) -> usize {
         let chunk_position = get_chunk_position(block_position);
         let Some(chunk) = &self.chunks.get(&chunk_position) else {
-            return false;
+            return 0;
         };
         let relative_coords = get_relative_position(block_position, chunk_position);
         return chunk.blocks[get_index_from_position(relative_coords)];
     }
 
-    pub fn create_chunk(&mut self, chunk_position: IVec2, blocks: [bool; CHUNK_AREA]) {
+    pub async fn create_chunk(&mut self, chunk_position: IVec2, blocks: [usize; CHUNK_AREA]) {
         self.chunks
-            .insert(chunk_position, Chunk::new(chunk_position, blocks));
+            .insert(chunk_position, Chunk::new(chunk_position, blocks).await);
     }
 
     pub fn delete_chunk(&mut self, chunk_position: IVec2) {
