@@ -1,6 +1,6 @@
 use crate::{aabb::Aabb, chunk::{Chunk, CHUNK_AREA, CHUNK_WIDTH, TILE_SIZE}};
 use macroquad::prelude::*;
-use noise::{Fbm, HybridMulti, NoiseFn, Perlin, Worley};
+use noise::{HybridMulti, NoiseFn, Perlin};
 use std::collections::HashMap;
 
 pub struct ChunkManager {
