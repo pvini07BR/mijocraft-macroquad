@@ -1,9 +1,10 @@
 use macroquad::prelude::*;
 
-use crate::{aabb::Aabb, chunk::{Chunk, TILE_SIZE}, chunk_manager::ChunkManager};
+use crate::{aabb::Aabb, chunk::TILE_SIZE, chunk_manager::ChunkManager};
 
 pub struct Player {
     pub velocity: Vec2,
+    pub noclip: bool,
     pub aabb: Aabb,
 }
 
@@ -11,6 +12,7 @@ impl Player {
     pub fn new(position: Vec2) -> Player {
         Player {
             velocity: Vec2::ZERO,
+            noclip: false,
             aabb: Aabb {
                 position,
                 half_size: Vec2::splat((TILE_SIZE as f32 - 8.0) / 2.0),
@@ -19,6 +21,14 @@ impl Player {
     }
 
     pub fn input(&mut self) {
+        let mut speed = 5.0 * TILE_SIZE as f32;
+        if is_key_down(KeyCode::LeftControl) {
+            speed *= 4.0;
+        }
+        if is_key_down(KeyCode::LeftShift) {
+            speed /= 4.0;
+        }
+
         if is_key_down(KeyCode::D) || is_key_down(KeyCode::Right) {
             self.velocity.x = 1.0;
         } else if is_key_down(KeyCode::A) || is_key_down(KeyCode::Left) {
@@ -35,10 +45,19 @@ impl Player {
             self.velocity.y = 0.0;
         }
 
-        self.velocity = self.velocity.normalize_or_zero() * (5.0 * TILE_SIZE as f32);
+        if is_key_pressed(KeyCode::F) {
+            self.noclip = !self.noclip;
+        }
+
+        self.velocity = self.velocity.normalize_or_zero() * speed;
     }
 
     pub fn update(&mut self, chunk_manager: &ChunkManager) {
+        if self.noclip {
+            self.aabb.position += self.velocity * get_frame_time();
+            return;
+        }
+
         let bottom_left = self.aabb.position - self.aabb.half_size;
         let bottom_right = self.aabb.position + vec2(self.aabb.half_size.x, -self.aabb.half_size.y);
         let top_right = self.aabb.position + self.aabb.half_size;
