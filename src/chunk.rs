@@ -1,6 +1,8 @@
 use macroquad::models::Vertex;
 use macroquad::prelude::*;
 
+use crate::aabb::Aabb;
+
 pub const TILE_SIZE: usize = 32;
 pub const CHUNK_WIDTH: usize = 16;
 pub const CHUNK_AREA: usize = CHUNK_WIDTH * CHUNK_WIDTH;
@@ -10,12 +12,15 @@ pub struct Chunk {
     pub position: IVec2,
     pub blocks: [usize; 256],
     pub mesh: Option<Mesh>,
+    pub aabb: Aabb,
     indices: [u16; CHUNK_AREA * 6],
     block_atlas_texture: Texture2D
 }
 
 impl Chunk {
     pub async fn new(position: IVec2, blocks: [usize; 256]) -> Chunk {
+        const CHUNK_PIXEL_SIZE: f32 = CHUNK_WIDTH as f32 * TILE_SIZE as f32;
+
         let mut indices = [0; CHUNK_AREA * 6];
         let mut offset: usize = 0;
         for i in (0..(256 * 6)).step_by(6) {
@@ -33,10 +38,15 @@ impl Chunk {
         let tex = load_texture("assets/textures/blocks.png").await.unwrap();
         tex.set_filter(FilterMode::Nearest);
 
+        let to_block = position * CHUNK_WIDTH as i32;
+        let to_pixel = to_block * TILE_SIZE as i32;
+        let chunk_aabb = Aabb::new(to_pixel.as_vec2() + Vec2::splat(CHUNK_PIXEL_SIZE/2.0), Vec2::splat(CHUNK_PIXEL_SIZE/2.0));
+
         let mut new_chunk = Chunk {
             blocks,
             position,
             indices,
+            aabb: chunk_aabb,
             mesh: None,
             block_atlas_texture: tex
         };
@@ -44,6 +54,8 @@ impl Chunk {
         return new_chunk;
     }
 
+    // This function is causing some weird high memory usage
+    // that is still unknown.
     pub fn remesh(&mut self) {
         let mut vertices = [Vertex {
             position: Vec3::ZERO,
@@ -70,7 +82,8 @@ impl Chunk {
                     };
 
                     let block_uv_unit = 1.0 / BLOCK_COUNT as f32;
-                    let block_uv_index = block_uv_unit * self.blocks[index] as f32;
+                    // It needs to not consider the block ID number 0 because it's just air
+                    let block_uv_index = block_uv_unit * (self.blocks[index] - 1) as f32;
 
                     vertices[vert_index] = Vertex {
                         position: p(false, false),

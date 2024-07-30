@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 macroquad = "0.4.11"
+noise = "0.9.0"
 rand = "0.8.5"

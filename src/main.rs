@@ -3,13 +3,28 @@ mod chunk;
 mod chunk_manager;
 mod player;
 
+use aabb::Aabb;
 use chunk::TILE_SIZE;
-use chunk_manager::{get_chunk_position, ChunkManager};
+use chunk_manager::ChunkManager;
 use macroquad::prelude::*;
 
 use player::Player;
 
-#[macroquad::main("mijocraft")]
+fn window_conf() -> Conf {
+    let mut conf = Conf {
+        window_title: "mijocraft".to_owned(),
+        window_width: 1280,
+        window_height: 720,
+        ..Default::default()
+    };
+    // Some(0) if you want to disable VSync
+    // None if you want to enable VSync
+    conf.platform.swap_interval = Some(0);
+    return conf;
+}
+
+
+#[macroquad::main(window_conf)]
 async fn main() {
     let mut chunk_manager = ChunkManager::new();
 
@@ -42,32 +57,32 @@ async fn main() {
         
         camera.target = player.get_position();
 
-        let top_left = camera.screen_to_world(Vec2::ZERO);
-        let bottom_right = camera.screen_to_world(vec2(screen_width(), screen_height()));
+        let screen_top_left = camera.screen_to_world(vec2(screen_width()/2.0, screen_height()/2.0));
+        let screen_bottom_right = camera.screen_to_world(vec2(screen_width(), screen_height()));
+        let screen_aabb = Aabb::new(screen_top_left, (screen_bottom_right - screen_top_left).abs());
 
-        
-        let top_left_block = (top_left / TILE_SIZE as f32).floor().as_ivec2();
-        let bottom_right_block = (bottom_right / TILE_SIZE as f32).floor().as_ivec2();
-        
-        let top_left_chunk = get_chunk_position(top_left_block);
-        let bottom_right_chunk = get_chunk_position(bottom_right_block);
-
-        chunk_manager.load_chunks_area(top_left_chunk, bottom_right_chunk).await;
-
-        clear_background(LIGHTGRAY);
-
-        set_camera(&camera);
-
-        chunk_manager.draw(&camera);
-        player.draw();
+        chunk_manager.load_chunks_on_screen(&screen_aabb).await;
 
         let world_pos = camera.screen_to_world(vec2(mouse_position().0, mouse_position().1));
-        draw_rectangle((world_pos.x / TILE_SIZE as f32).floor() * TILE_SIZE as f32, (world_pos.y / TILE_SIZE as f32).floor() * TILE_SIZE as f32, TILE_SIZE as f32, TILE_SIZE as f32, Color::new(1.0, 1.0, 1.0, 0.5));
+        let block_pos = (world_pos / TILE_SIZE as f32).floor().as_ivec2();
+
+        if is_mouse_button_pressed(MouseButton::Left) { chunk_manager.set_block(block_pos, 0); }
+        if is_mouse_button_pressed(MouseButton::Right) { chunk_manager.set_block(block_pos, 1); }
+        
+        clear_background(LIGHTGRAY);
+        
+        set_camera(&camera);
+        
+        chunk_manager.draw(&screen_aabb);
+        player.draw();
+        
+        draw_rectangle(block_pos.x as f32 * TILE_SIZE as f32, block_pos.y as f32 * TILE_SIZE as f32, TILE_SIZE as f32, TILE_SIZE as f32, Color::new(1.0, 1.0, 1.0, 0.5));
+        //screen_aabb.debug_draw(BLUE);
 
         set_default_camera();
         draw_text(format!("FPS: {}", get_fps()).as_str(), 0.0, 16.0, 24.0, BLACK);
         draw_text(format!("Loaded Chunks: {}", chunk_manager.get_loaded_chunks_amount()).as_str(), 0.0, 30.0, 24.0, BLACK);
-
+        
         next_frame().await;
     }
 }
