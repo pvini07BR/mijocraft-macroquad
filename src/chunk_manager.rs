@@ -34,9 +34,7 @@ impl ChunkManager {
             if screen_aabb.intersects(&chunk_aabb) {
                 chunk.draw();
             }
-            chunk_aabb.debug_draw(RED);
         }
-        screen_aabb.debug_draw(BLUE);
     }
 
     pub fn get_block(&self, block_position: IVec2) -> usize {
@@ -46,6 +44,10 @@ impl ChunkManager {
         };
         let relative_coords = get_relative_position(block_position, chunk_position);
         return chunk.blocks[get_index_from_position(relative_coords)];
+    }
+
+    pub fn get_loaded_chunks_amount(&self) -> usize {
+        return self.chunks.len();
     }
 
     pub async fn create_chunk(&mut self, chunk_position: IVec2, blocks: [usize; CHUNK_AREA]) {

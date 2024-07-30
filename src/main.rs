@@ -66,6 +66,7 @@ async fn main() {
 
         set_default_camera();
         draw_text(format!("FPS: {}", get_fps()).as_str(), 0.0, 16.0, 24.0, BLACK);
+        draw_text(format!("Loaded Chunks: {}", chunk_manager.get_loaded_chunks_amount()).as_str(), 0.0, 30.0, 24.0, BLACK);
 
         next_frame().await;
     }
