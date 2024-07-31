@@ -26,7 +26,10 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut chunk_manager = ChunkManager::new();
+    let tex = load_texture("assets/textures/blocks.png").await.unwrap();
+    tex.set_filter(FilterMode::Nearest);
+    
+    let mut chunk_manager = ChunkManager::new(tex);
 
     let mut player = Player::new(Vec2::ZERO);
 

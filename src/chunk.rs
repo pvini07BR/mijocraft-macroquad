@@ -11,14 +11,12 @@ pub const BLOCK_COUNT: usize = 8;
 pub struct Chunk {
     pub position: IVec2,
     pub blocks: [usize; 256],
-    pub mesh: Option<Mesh>,
+    pub mesh: Mesh,
     pub aabb: Aabb,
-    indices: [u16; CHUNK_AREA * 6],
-    block_atlas_texture: Texture2D
 }
 
 impl Chunk {
-    pub async fn new(position: IVec2, blocks: [usize; 256]) -> Chunk {
+    pub async fn new(position: IVec2, blocks: [usize; 256], texture_atlas: &Texture2D) -> Chunk {
         const CHUNK_PIXEL_SIZE: f32 = CHUNK_WIDTH as f32 * TILE_SIZE as f32;
 
         let mut indices = [0; CHUNK_AREA * 6];
@@ -35,9 +33,6 @@ impl Chunk {
             offset += 4;
         }
 
-        let tex = load_texture("assets/textures/blocks.png").await.unwrap();
-        tex.set_filter(FilterMode::Nearest);
-
         let to_block = position * CHUNK_WIDTH as i32;
         let to_pixel = to_block * TILE_SIZE as i32;
         let chunk_aabb = Aabb::new(to_pixel.as_vec2() + Vec2::splat(CHUNK_PIXEL_SIZE/2.0), Vec2::splat(CHUNK_PIXEL_SIZE/2.0));
@@ -45,10 +40,8 @@ impl Chunk {
         let mut new_chunk = Chunk {
             blocks,
             position,
-            indices,
             aabb: chunk_aabb,
-            mesh: None,
-            block_atlas_texture: tex
+            mesh: Mesh {indices: indices.to_vec(), vertices: vec![], texture: Some(texture_atlas.weak_clone())},
         };
         new_chunk.remesh();
         return new_chunk;
@@ -109,17 +102,10 @@ impl Chunk {
             }
         }
 
-        self.mesh = Some(Mesh {
-            vertices: vertices.to_vec(),
-            indices: self.indices.to_vec(),
-            texture: Some(self.block_atlas_texture.clone()),
-        });
+        self.mesh.vertices = vertices.to_vec();
     }
 
     pub fn draw(&self) {
-        let Some(m) = &self.mesh else {
-            return;
-        };
-        draw_mesh(&m);
+        draw_mesh(&self.mesh);
     }
 }

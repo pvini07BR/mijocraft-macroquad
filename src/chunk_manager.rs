@@ -5,12 +5,14 @@ use std::collections::HashMap;
 
 pub struct ChunkManager {
     chunks: HashMap<IVec2, Chunk>,
+    blocks_atlas_texture: Texture2D
 }
 
 impl ChunkManager {
-    pub fn new() -> ChunkManager {
+    pub fn new(blocks_atlas_texture: Texture2D) -> ChunkManager {
         ChunkManager {
             chunks: HashMap::<IVec2, Chunk>::new(),
+            blocks_atlas_texture
         }
     }
 
@@ -48,7 +50,7 @@ impl ChunkManager {
 
     pub async fn create_chunk(&mut self, chunk_position: IVec2, blocks: [usize; CHUNK_AREA]) {
         self.chunks
-            .insert(chunk_position, Chunk::new(chunk_position, blocks).await);
+            .insert(chunk_position, Chunk::new(chunk_position, blocks, &self.blocks_atlas_texture).await);
     }
 
     pub fn delete_chunk(&mut self, chunk_position: IVec2) {
@@ -76,6 +78,14 @@ impl ChunkManager {
                     blocks[index] = 2;
                 } else if global_pos.y < s-25 {
                     blocks[index] = 3;
+                }
+
+                if pos.y <= -3 {
+                    let cave_noise = Perlin::new(0);
+                    let sample = cave_noise.get([global_pos.x as f64 / CHUNK_WIDTH as f64, global_pos.y as f64 / CHUNK_WIDTH as f64]);
+                    if sample >= 0.5 {
+                        blocks[index] = 0;
+                    }
                 }
             }
         }
