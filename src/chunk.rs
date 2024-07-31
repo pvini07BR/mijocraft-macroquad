@@ -16,7 +16,7 @@ pub struct Chunk {
 }
 
 impl Chunk {
-    pub async fn new(position: IVec2, blocks: [usize; 256], texture_atlas: &Texture2D) -> Chunk {
+    pub async fn new(position: IVec2, blocks: [usize; 256], texture_atlas: Texture2D) -> Chunk {
         const CHUNK_PIXEL_SIZE: f32 = CHUNK_WIDTH as f32 * TILE_SIZE as f32;
 
         let mut indices = [0; CHUNK_AREA * 6];
@@ -41,7 +41,7 @@ impl Chunk {
             blocks,
             position,
             aabb: chunk_aabb,
-            mesh: Mesh {indices: indices.to_vec(), vertices: vec![], texture: Some(texture_atlas.weak_clone())},
+            mesh: Mesh {indices: indices.to_vec(), vertices: vec![], texture: Some(texture_atlas)},
         };
         new_chunk.remesh();
         return new_chunk;

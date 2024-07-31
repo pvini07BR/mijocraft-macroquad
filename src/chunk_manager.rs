@@ -50,7 +50,7 @@ impl ChunkManager {
 
     pub async fn create_chunk(&mut self, chunk_position: IVec2, blocks: [usize; CHUNK_AREA]) {
         self.chunks
-            .insert(chunk_position, Chunk::new(chunk_position, blocks, &self.blocks_atlas_texture).await);
+            .insert(chunk_position, Chunk::new(chunk_position, blocks, self.blocks_atlas_texture.clone()).await);
     }
 
     pub fn delete_chunk(&mut self, chunk_position: IVec2) {
