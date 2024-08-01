@@ -8,6 +8,8 @@ pub const CHUNK_WIDTH: usize = 16;
 pub const CHUNK_AREA: usize = CHUNK_WIDTH * CHUNK_WIDTH;
 pub const BLOCK_COUNT: usize = 8;
 
+const CHUNK_PIXEL_SIZE: f32 = CHUNK_WIDTH as f32 * TILE_SIZE as f32;
+
 pub struct Chunk {
     pub position: IVec2,
     pub blocks: [usize; 256],
@@ -17,8 +19,6 @@ pub struct Chunk {
 
 impl Chunk {
     pub async fn new(position: IVec2, blocks: [usize; 256], texture_atlas: Texture2D) -> Chunk {
-        const CHUNK_PIXEL_SIZE: f32 = CHUNK_WIDTH as f32 * TILE_SIZE as f32;
-
         let mut indices = [0; CHUNK_AREA * 6];
         let mut offset: usize = 0;
         for i in (0..(256 * 6)).step_by(6) {
@@ -35,13 +35,20 @@ impl Chunk {
 
         let to_block = position * CHUNK_WIDTH as i32;
         let to_pixel = to_block * TILE_SIZE as i32;
-        let chunk_aabb = Aabb::new(to_pixel.as_vec2() + Vec2::splat(CHUNK_PIXEL_SIZE/2.0), Vec2::splat(CHUNK_PIXEL_SIZE/2.0));
+        let chunk_aabb = Aabb::new(
+            to_pixel.as_vec2() + Vec2::splat(CHUNK_PIXEL_SIZE / 2.0),
+            Vec2::splat(CHUNK_PIXEL_SIZE / 2.0),
+        );
 
         let mut new_chunk = Chunk {
             blocks,
             position,
             aabb: chunk_aabb,
-            mesh: Mesh {indices: indices.to_vec(), vertices: vec![], texture: Some(texture_atlas)},
+            mesh: Mesh {
+                indices: indices.to_vec(),
+                vertices: vec![],
+                texture: Some(texture_atlas),
+            },
         };
         new_chunk.remesh();
         return new_chunk;
@@ -105,7 +112,47 @@ impl Chunk {
         self.mesh.vertices = vertices.to_vec();
     }
 
-    pub fn draw(&self) {
+    pub fn draw(&self, debug: bool) {
         draw_mesh(&self.mesh);
+
+        if debug {
+            for y in 0..CHUNK_WIDTH {
+                draw_line(
+                    self.position.x as f32 * CHUNK_PIXEL_SIZE,
+                    (self.position.y as f32 * CHUNK_PIXEL_SIZE) + (y as f32 * TILE_SIZE as f32),
+                    (self.position.x as f32 * CHUNK_PIXEL_SIZE) + CHUNK_PIXEL_SIZE,
+                    (self.position.y as f32 * CHUNK_PIXEL_SIZE) + (y as f32 * TILE_SIZE as f32),
+                    2.0,
+                    color_u8!(255.0, 255.0, 255.0, 128.0),
+                );
+            }
+            for x in 0..CHUNK_WIDTH {
+                draw_line(
+                    (self.position.x as f32 * CHUNK_PIXEL_SIZE) + (x as f32 * TILE_SIZE as f32),
+                    self.position.y as f32 * CHUNK_PIXEL_SIZE,
+                    (self.position.x as f32 * CHUNK_PIXEL_SIZE) + (x as f32 * TILE_SIZE as f32),
+                    (self.position.y as f32 * CHUNK_PIXEL_SIZE) + CHUNK_PIXEL_SIZE,
+                    2.0,
+                    color_u8!(255.0, 255.0, 255.0, 128.0),
+                );
+            }
+
+            draw_line(
+                self.position.x as f32 * CHUNK_PIXEL_SIZE,
+                self.position.y as f32 * CHUNK_PIXEL_SIZE,
+                (self.position.x as f32 * CHUNK_PIXEL_SIZE) + CHUNK_PIXEL_SIZE,
+                self.position.y as f32 * CHUNK_PIXEL_SIZE,
+                5.0,
+                BLUE,
+            );
+            draw_line(
+                self.position.x as f32 * CHUNK_PIXEL_SIZE,
+                self.position.y as f32 * CHUNK_PIXEL_SIZE,
+                self.position.x as f32 * CHUNK_PIXEL_SIZE,
+                (self.position.y as f32 * CHUNK_PIXEL_SIZE) + CHUNK_PIXEL_SIZE,
+                5.0,
+                RED,
+            );
+        }
     }
 }

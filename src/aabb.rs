@@ -7,16 +7,21 @@ pub struct Aabb {
 
 impl Aabb {
     pub fn new(position: Vec2, half_size: Vec2) -> Aabb {
-        return Aabb { position, half_size };
+        return Aabb {
+            position,
+            half_size,
+        };
     }
 
     pub fn intersects(&self, other: &Aabb) -> bool {
         // collision x-axis?
-        let collision_x = (self.position.x + self.half_size.x) >= (other.position.x - other.half_size.x) && 
-            (other.position.x + other.half_size.x) >= (self.position.x - self.half_size.x);
+        let collision_x = (self.position.x + self.half_size.x)
+            >= (other.position.x - other.half_size.x)
+            && (other.position.x + other.half_size.x) >= (self.position.x - self.half_size.x);
         // collision y-axis?
-        let collision_y = (self.position.y + self.half_size.y) >= (other.position.y - other.half_size.y) && 
-        (other.position.y + other.half_size.y) >= (self.position.y - self.half_size.y);
+        let collision_y = (self.position.y + self.half_size.y)
+            >= (other.position.y - other.half_size.y)
+            && (other.position.y + other.half_size.y) >= (self.position.y - self.half_size.y);
         // collision only if on both axes
         return collision_x && collision_y;
     }
@@ -25,8 +30,8 @@ impl Aabb {
         draw_rectangle(
             self.position.x - self.half_size.x,
             self.position.y - self.half_size.y,
-            self.half_size.x*2.0,
-            self.half_size.y*2.0,
+            self.half_size.x * 2.0,
+            self.half_size.y * 2.0,
             Color {
                 r: color.r,
                 g: color.g,
@@ -37,8 +42,8 @@ impl Aabb {
         draw_rectangle_lines(
             self.position.x - self.half_size.x,
             self.position.y - self.half_size.y,
-            self.half_size.x*2.0,
-            self.half_size.y*2.0,
+            self.half_size.x * 2.0,
+            self.half_size.y * 2.0,
             2.0,
             color,
         );

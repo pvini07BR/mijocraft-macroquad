@@ -1,27 +1,30 @@
-use crate::{aabb::Aabb, chunk::{Chunk, CHUNK_AREA, CHUNK_WIDTH, TILE_SIZE}};
+use crate::{
+    aabb::Aabb,
+    chunk::{Chunk, CHUNK_AREA, CHUNK_WIDTH, TILE_SIZE},
+};
 use macroquad::prelude::*;
 use noise::{HybridMulti, NoiseFn, Perlin};
 use std::collections::HashMap;
 
 pub struct ChunkManager {
     chunks: HashMap<IVec2, Chunk>,
-    blocks_atlas_texture: Texture2D
+    blocks_atlas_texture: Texture2D,
 }
 
 impl ChunkManager {
     pub fn new(blocks_atlas_texture: Texture2D) -> ChunkManager {
         ChunkManager {
             chunks: HashMap::<IVec2, Chunk>::new(),
-            blocks_atlas_texture
+            blocks_atlas_texture,
         }
     }
 
-    pub fn draw(&self, screen_aabb: &Aabb) {
+    pub fn draw(&self, screen_aabb: &Aabb, debug: bool) {
         // Only render chunks that are inside the screen!!!
         // ================================================
         for chunk in self.chunks.values() {
             if screen_aabb.intersects(&chunk.aabb) {
-                chunk.draw();
+                chunk.draw(debug);
             }
             //chunk.aabb.debug_draw(RED);
         }
@@ -29,7 +32,9 @@ impl ChunkManager {
 
     pub fn set_block(&mut self, block_position: IVec2, block_type: usize) {
         let chunk_position = get_chunk_position(block_position);
-        let Some(chunk) = self.chunks.get_mut(&chunk_position) else { return; };
+        let Some(chunk) = self.chunks.get_mut(&chunk_position) else {
+            return;
+        };
         let relative_coords = get_relative_position(block_position, chunk_position);
         chunk.blocks[get_index_from_position(relative_coords)] = block_type;
         chunk.remesh();
@@ -49,8 +54,10 @@ impl ChunkManager {
     }
 
     pub async fn create_chunk(&mut self, chunk_position: IVec2, blocks: [usize; CHUNK_AREA]) {
-        self.chunks
-            .insert(chunk_position, Chunk::new(chunk_position, blocks, self.blocks_atlas_texture.clone()).await);
+        self.chunks.insert(
+            chunk_position,
+            Chunk::new(chunk_position, blocks, self.blocks_atlas_texture.clone()).await,
+        );
     }
 
     pub fn delete_chunk(&mut self, chunk_position: IVec2) {
@@ -64,25 +71,37 @@ impl ChunkManager {
         for y in 0..CHUNK_WIDTH {
             for x in 0..CHUNK_WIDTH {
                 let index = get_index_from_position(uvec2(x as u32, y as u32));
-                let global_pos = ivec2((pos.x * CHUNK_WIDTH as i32) + x as i32, (pos.y * CHUNK_WIDTH as i32) + y as i32);
+                let global_pos = ivec2(
+                    (pos.x * CHUNK_WIDTH as i32) + x as i32,
+                    (pos.y * CHUNK_WIDTH as i32) + y as i32,
+                );
 
                 let mut noise = HybridMulti::<Perlin>::default();
                 noise.frequency = 0.25;
                 noise.lacunarity = 3.0;
 
-                let s = ((noise.get([global_pos.x as f64 / CHUNK_WIDTH as f64, global_pos.x as f64 / CHUNK_WIDTH as f64, global_pos.x as f64 / CHUNK_WIDTH as f64]) + 0.5) * CHUNK_WIDTH as f64).round() as i32;
+                let s = ((noise.get([
+                    global_pos.x as f64 / CHUNK_WIDTH as f64,
+                    global_pos.x as f64 / CHUNK_WIDTH as f64,
+                    global_pos.x as f64 / CHUNK_WIDTH as f64,
+                ]) + 0.5)
+                    * CHUNK_WIDTH as f64)
+                    .round() as i32;
 
                 if global_pos.y == s {
                     blocks[index] = 1;
-                } else if global_pos.y < s && global_pos.y >= s-25 {
+                } else if global_pos.y < s && global_pos.y >= s - 25 {
                     blocks[index] = 2;
-                } else if global_pos.y < s-25 {
+                } else if global_pos.y < s - 25 {
                     blocks[index] = 3;
                 }
 
                 if pos.y <= -3 {
                     let cave_noise = Perlin::new(0);
-                    let sample = cave_noise.get([global_pos.x as f64 / CHUNK_WIDTH as f64, global_pos.y as f64 / CHUNK_WIDTH as f64]);
+                    let sample = cave_noise.get([
+                        global_pos.x as f64 / CHUNK_WIDTH as f64,
+                        global_pos.y as f64 / CHUNK_WIDTH as f64,
+                    ]);
                     if sample >= 0.5 {
                         blocks[index] = 0;
                     }
@@ -117,10 +136,14 @@ impl ChunkManager {
     pub fn unload_unseen_chunks(&mut self, screen_aabb: &Aabb) {
         let mut chunk_poses_to_delete: Vec<IVec2> = vec![];
         for (chunk_pos, chunk) in self.chunks.iter() {
-            if !screen_aabb.intersects(&chunk.aabb) { chunk_poses_to_delete.push(*chunk_pos); }
+            if !screen_aabb.intersects(&chunk.aabb) {
+                chunk_poses_to_delete.push(*chunk_pos);
+            }
         }
 
-        for pos in chunk_poses_to_delete { self.delete_chunk(pos); }
+        for pos in chunk_poses_to_delete {
+            self.delete_chunk(pos);
+        }
     }
 }
 
