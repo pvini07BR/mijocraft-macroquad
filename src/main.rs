@@ -3,7 +3,7 @@ mod chunk_manager;
 mod collision;
 mod player;
 
-use chunk::TILE_SIZE;
+use chunk::{ChunkLayer, TILE_SIZE};
 use chunk_manager::{get_chunk_position, ChunkManager};
 use collision::bounding_box::AxisAlignedRectangle;
 use macroquad::prelude::*;
@@ -25,10 +25,7 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let tex = load_texture("assets/textures/blocks.png").await.unwrap();
-    tex.set_filter(FilterMode::Nearest);
-
-    let mut chunk_manager = ChunkManager::new(tex);
+    let mut chunk_manager = ChunkManager::new().await;
 
     let mut player = Player::new(Vec2::ZERO);
 
@@ -39,6 +36,7 @@ async fn main() {
     let mut zoom = 1.0;
     let mut mouse_pos: Option<Vec2> = None;
     let mut block_mouse_pos: Option<IVec2> = None;
+    let mut current_block_layer: ChunkLayer = ChunkLayer::FOREGROUND;
 
     let mut debug_f3: bool = false;
 
@@ -71,6 +69,10 @@ async fn main() {
             mouse_pos = Some(vec2(mouse_position().0, mouse_position().1));
         }
 
+        if is_key_pressed(KeyCode::Tab) {
+            current_block_layer = current_block_layer.flip();
+        }
+
         let screen_bottom_right_srcpos = Vec2 {
             y: screen_height(),
             x: screen_width(),
@@ -92,10 +94,10 @@ async fn main() {
             let block_pos = (world_pos / TILE_SIZE as f32).floor().as_ivec2();
 
             if is_mouse_button_pressed(MouseButton::Left) {
-                chunk_manager.set_block(block_pos, 0);
+                chunk_manager.set_block(block_pos, current_block_layer, 0);
             }
             if is_mouse_button_pressed(MouseButton::Right) {
-                chunk_manager.set_block(block_pos, 1);
+                chunk_manager.set_block(block_pos, current_block_layer, 1);
             }
 
             block_mouse_pos = Some(block_pos);
@@ -126,6 +128,7 @@ async fn main() {
             let mut strings = vec![
                 format!("FPS: {}", get_fps()),
                 format!("Position: {}", player.bounding_box.center_pos),
+                format!("Current cursor layer: {}", current_block_layer),
                 format!("Zoom: {}x", zoom),
                 "\n".to_string(),
                 format!(

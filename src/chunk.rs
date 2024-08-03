@@ -10,15 +10,42 @@ pub const BLOCK_COUNT: usize = 8;
 
 const CHUNK_PIXEL_SIZE: f32 = CHUNK_WIDTH as f32 * TILE_SIZE as f32;
 
+#[allow(dead_code)]
+#[derive(Clone, Copy)]
+pub enum ChunkLayer {
+    FOREGROUND,
+    BACKGROUND
+}
+
+impl std::fmt::Display for ChunkLayer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ChunkLayer::FOREGROUND => write!(f, "Foreground"),
+            ChunkLayer::BACKGROUND => write!(f, "Background")
+        }
+    }
+}
+
+impl ChunkLayer {
+    pub fn flip(&self) -> ChunkLayer {
+        return match self {
+            ChunkLayer::FOREGROUND => ChunkLayer::BACKGROUND,
+            ChunkLayer::BACKGROUND => ChunkLayer::FOREGROUND
+        }
+    }
+}
+
 pub struct Chunk {
     pub position: IVec2,
-    pub blocks: [usize; 256],
-    pub mesh: Mesh,
+    pub foreground_blocks: [usize; CHUNK_AREA],
+    pub background_blocks: [usize; CHUNK_AREA],
+    pub foreground_mesh: Mesh,
+    pub background_mesh: Mesh,
     pub aabb: AxisAlignedRectangle,
 }
 
 impl Chunk {
-    pub async fn new(position: IVec2, blocks: [usize; 256], texture_atlas: Texture2D) -> Chunk {
+    pub async fn new(position: IVec2, foreground_blocks: [usize; CHUNK_AREA], background_blocks: [usize; CHUNK_AREA], texture_atlas: Texture2D) -> Chunk {
         const CHUNK_WORLD_WIDTH: f32 = CHUNK_WIDTH as f32 * TILE_SIZE as f32;
         let mut indices = [0; CHUNK_AREA * 6];
         let mut offset: usize = 0;
@@ -42,10 +69,16 @@ impl Chunk {
         };
 
         let mut new_chunk = Chunk {
-            blocks,
+            foreground_blocks,
+            background_blocks,
             position,
             aabb: chunk_aabb,
-            mesh: Mesh {
+            foreground_mesh: Mesh {
+                indices: indices.to_vec(),
+                vertices: vec![],
+                texture: Some(texture_atlas.clone()),
+            },
+            background_mesh: Mesh {
                 indices: indices.to_vec(),
                 vertices: vec![],
                 texture: Some(texture_atlas),
@@ -58,17 +91,22 @@ impl Chunk {
     // This function is causing some weird high memory usage
     // that is still unknown.
     pub fn remesh(&mut self) {
-        let mut vertices = [Vertex {
+        let mut foreground_vertices = [Vertex {
             position: Vec3::ZERO,
             uv: Vec2::ZERO,
-            color: Color::default(),
+            color: WHITE,
+        }; CHUNK_AREA * 4];
+        let mut background_vertices = [Vertex {
+            position: Vec3::ZERO,
+            uv: Vec2::ZERO,
+            color: GRAY,
         }; CHUNK_AREA * 4];
 
         for y in 0..16 {
             for x in 0..16 {
                 let index: usize = x + (y * 16);
                 let vert_index = index * 4;
-                if self.blocks[index] > 0 {
+                if self.foreground_blocks[index] > 0 || self.background_blocks[index] > 0 {
                     let pos_template = |pos: usize, x: bool| {
                         pos as f32 * TILE_SIZE as f32 + (x as usize * TILE_SIZE) as f32
                     };
@@ -83,38 +121,40 @@ impl Chunk {
                     };
 
                     let block_uv_unit = 1.0 / BLOCK_COUNT as f32;
-                    // It needs to not consider the block ID number 0 because it's just air
-                    let block_uv_index = block_uv_unit * (self.blocks[index] - 1) as f32;
+                    let set_vertex_values = |blocks: &[usize; CHUNK_AREA], vertices: &mut [Vertex; CHUNK_AREA * 4]| {
+                        // It needs to not consider the block ID number 0 because it's just air
+                        let block_uv_index = block_uv_unit * (blocks[index] - 1) as f32;
+    
+                        vertices[vert_index].position = p(false, false);
+                        vertices[vert_index].uv = Vec2::new(block_uv_index, 1.0);
+    
+                        vertices[vert_index + 1].position = p(true, false);
+                        vertices[vert_index + 1].uv = Vec2::new(block_uv_index + block_uv_unit, 1.0);
+    
+                        vertices[vert_index + 2].position = p(true, true);
+                        vertices[vert_index + 2].uv = Vec2::new(block_uv_index + block_uv_unit, 0.0);
+    
+                        vertices[vert_index + 3].position = p(false, true);
+                        vertices[vert_index + 3].uv = Vec2::new(block_uv_index, 0.0);
+                    };
 
-                    vertices[vert_index] = Vertex {
-                        position: p(false, false),
-                        uv: Vec2::new(block_uv_index, 1.0),
-                        color: WHITE,
-                    };
-                    vertices[vert_index + 1] = Vertex {
-                        position: p(true, false),
-                        uv: Vec2::new(block_uv_index + block_uv_unit, 1.0),
-                        color: WHITE,
-                    };
-                    vertices[vert_index + 2] = Vertex {
-                        position: p(true, true),
-                        uv: Vec2::new(block_uv_index + block_uv_unit, 0.0),
-                        color: WHITE,
-                    };
-                    vertices[vert_index + 3] = Vertex {
-                        position: p(false, true),
-                        uv: Vec2::new(block_uv_index, 0.0),
-                        color: WHITE,
-                    };
+                    if self.foreground_blocks[index] > 0 {
+                        set_vertex_values(&self.foreground_blocks, &mut foreground_vertices);
+                    }
+                    if self.background_blocks[index] > 0 {
+                        set_vertex_values(&self.background_blocks, &mut background_vertices);
+                    }
                 }
             }
         }
 
-        self.mesh.vertices = vertices.to_vec();
+        self.foreground_mesh.vertices = foreground_vertices.to_vec();
+        self.background_mesh.vertices = background_vertices.to_vec();
     }
 
     pub fn draw(&self, debug: bool) {
-        draw_mesh(&self.mesh);
+        draw_mesh(&self.background_mesh);
+        draw_mesh(&self.foreground_mesh);
 
         if debug {
             for y in 0..CHUNK_WIDTH {

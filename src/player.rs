@@ -3,7 +3,7 @@ use std::f32::consts::FRAC_PI_2;
 use macroquad::prelude::*;
 
 use crate::{
-    chunk::TILE_SIZE,
+    chunk::{ChunkLayer, TILE_SIZE},
     chunk_manager::ChunkManager,
     collision::{self, bounding_box::AxisAlignedRectangle},
 };
@@ -124,7 +124,7 @@ impl Player {
         let get_corner_overlap =
             |corner: Vec2, add_x: bool, add_y: bool, velocity: Vec2| -> Option<(Vec2, Vec2)> {
                 let next_frame = corner + (velocity * get_frame_time());
-                if chunk_manager.get_block((next_frame / TILE_SIZE as f32).floor().as_ivec2()) > 0 {
+                if chunk_manager.get_block((next_frame / TILE_SIZE as f32).floor().as_ivec2(), ChunkLayer::FOREGROUND) > 0 {
                     let to_block = (next_frame / TILE_SIZE as f32).floor() * TILE_SIZE as f32;
                     let added = to_block
                         + vec2(

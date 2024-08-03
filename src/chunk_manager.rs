@@ -1,5 +1,5 @@
 use crate::{
-    chunk::{Chunk, CHUNK_AREA, CHUNK_WIDTH, TILE_SIZE},
+    chunk::{Chunk, ChunkLayer, CHUNK_AREA, CHUNK_WIDTH, TILE_SIZE},
     collision::{bounding_box::AxisAlignedRectangle, RectangleCorners},
 };
 use macroquad::prelude::*;
@@ -8,11 +8,14 @@ use std::collections::HashMap;
 
 pub struct ChunkManager {
     chunks: HashMap<IVec2, Chunk>,
-    blocks_atlas_texture: Texture2D,
+    blocks_atlas_texture: Texture2D
 }
 
 impl ChunkManager {
-    pub fn new(blocks_atlas_texture: Texture2D) -> ChunkManager {
+    pub async fn new() -> ChunkManager {
+        let blocks_atlas_texture = load_texture("assets/textures/blocks.png").await.unwrap();
+        blocks_atlas_texture.set_filter(FilterMode::Nearest);
+
         ChunkManager {
             chunks: HashMap::<IVec2, Chunk>::new(),
             blocks_atlas_texture,
@@ -25,36 +28,43 @@ impl ChunkManager {
         self.chunks
             .values()
             .filter(|chunk| screen_aabb.intersects(&chunk.aabb))
-            .for_each(|chunk| chunk.draw(debug))
+            .for_each(|chunk| chunk.draw(debug));
     }
 
-    pub fn set_block(&mut self, block_position: IVec2, block_type: usize) {
+    pub fn set_block(&mut self, block_position: IVec2, layer: ChunkLayer, block_type: usize) {
         let chunk_position = get_chunk_position(block_position);
         let Some(chunk) = self.chunks.get_mut(&chunk_position) else {
             return;
         };
         let relative_coords = get_relative_position(block_position, chunk_position);
-        chunk.blocks[get_index_from_position(relative_coords)] = block_type;
+        match layer {
+            ChunkLayer::FOREGROUND => chunk.foreground_blocks[get_index_from_position(relative_coords)] = block_type,
+            ChunkLayer::BACKGROUND => chunk.background_blocks[get_index_from_position(relative_coords)] = block_type
+        }
+        
         chunk.remesh();
     }
 
-    pub fn get_block(&self, block_position: IVec2) -> usize {
+    pub fn get_block(&self, block_position: IVec2, layer: ChunkLayer) -> usize {
         let chunk_position = get_chunk_position(block_position);
         let Some(chunk) = &self.chunks.get(&chunk_position) else {
             return 0;
         };
         let relative_coords = get_relative_position(block_position, chunk_position);
-        return chunk.blocks[get_index_from_position(relative_coords)];
+        return match layer {
+            ChunkLayer::FOREGROUND => chunk.foreground_blocks[get_index_from_position(relative_coords)],
+            ChunkLayer::BACKGROUND => chunk.background_blocks[get_index_from_position(relative_coords)]
+        }
     }
 
     pub fn get_loaded_chunks_amount(&self) -> usize {
         return self.chunks.len();
     }
 
-    pub async fn create_chunk(&mut self, chunk_position: IVec2, blocks: [usize; CHUNK_AREA]) {
+    pub async fn create_chunk(&mut self, chunk_position: IVec2, foreground_blocks: [usize; CHUNK_AREA], background_blocks: [usize; CHUNK_AREA]) {
         self.chunks.insert(
             chunk_position,
-            Chunk::new(chunk_position, blocks, self.blocks_atlas_texture.clone()).await,
+            Chunk::new(chunk_position, foreground_blocks, background_blocks, self.blocks_atlas_texture.clone()).await,
         );
     }
 
@@ -64,7 +74,8 @@ impl ChunkManager {
     }
 
     pub async fn generate_chunk(&mut self, pos: IVec2) {
-        let mut blocks: [usize; 256] = [0; CHUNK_AREA];
+        let mut foreground_blocks: [usize; 256] = [0; CHUNK_AREA];
+        let mut background_blocks: [usize; 256] = [0; CHUNK_AREA];
 
         for y in 0..CHUNK_WIDTH {
             for x in 0..CHUNK_WIDTH {
@@ -87,11 +98,14 @@ impl ChunkManager {
                     .round() as i32;
 
                 if global_pos.y == s {
-                    blocks[index] = 1;
+                    foreground_blocks[index] = 1;
+                    background_blocks[index] = 1;
                 } else if global_pos.y < s && global_pos.y >= s - 25 {
-                    blocks[index] = 2;
+                    foreground_blocks[index] = 2;
+                    background_blocks[index] = 2;
                 } else if global_pos.y < s - 25 {
-                    blocks[index] = 3;
+                    foreground_blocks[index] = 3;
+                    background_blocks[index] = 3;
                 }
 
                 if pos.y <= -3 {
@@ -101,13 +115,13 @@ impl ChunkManager {
                         global_pos.y as f64 / CHUNK_WIDTH as f64,
                     ]);
                     if sample >= 0.5 {
-                        blocks[index] = 0;
+                        foreground_blocks[index] = 0;
                     }
                 }
             }
         }
 
-        self.create_chunk(pos, blocks).await;
+        self.create_chunk(pos, foreground_blocks, background_blocks).await;
     }
 
     pub async fn load_chunks_on_screen(&mut self, screen_aabb: &AxisAlignedRectangle) {
