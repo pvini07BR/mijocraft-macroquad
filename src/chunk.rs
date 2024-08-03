@@ -1,7 +1,7 @@
 use macroquad::models::Vertex;
 use macroquad::prelude::*;
 
-use crate::aabb::Aabb;
+use crate::collision::bounding_box::AxisAlignedRectangle;
 
 pub const TILE_SIZE: usize = 32;
 pub const CHUNK_WIDTH: usize = 16;
@@ -14,11 +14,12 @@ pub struct Chunk {
     pub position: IVec2,
     pub blocks: [usize; 256],
     pub mesh: Mesh,
-    pub aabb: Aabb,
+    pub aabb: AxisAlignedRectangle,
 }
 
 impl Chunk {
     pub async fn new(position: IVec2, blocks: [usize; 256], texture_atlas: Texture2D) -> Chunk {
+        const CHUNK_WORLD_WIDTH: f32 = CHUNK_WIDTH as f32 * TILE_SIZE as f32;
         let mut indices = [0; CHUNK_AREA * 6];
         let mut offset: usize = 0;
         for i in (0..(256 * 6)).step_by(6) {
@@ -33,12 +34,9 @@ impl Chunk {
             offset += 4;
         }
 
-        let to_block = position * CHUNK_WIDTH as i32;
-        let to_pixel = to_block * TILE_SIZE as i32;
-        let chunk_aabb = Aabb::new(
-            to_pixel.as_vec2() + Vec2::splat(CHUNK_PIXEL_SIZE / 2.0),
-            Vec2::splat(CHUNK_PIXEL_SIZE / 2.0),
-        );
+        let bottom_left_worldpos = position.as_vec2() * CHUNK_WORLD_WIDTH;
+        let size = Vec2::splat(CHUNK_WORLD_WIDTH);
+        let chunk_aabb = AxisAlignedRectangle { center_pos: bottom_left_worldpos + size*0.5, size };
 
         let mut new_chunk = Chunk {
             blocks,

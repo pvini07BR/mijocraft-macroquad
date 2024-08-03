@@ -1,11 +1,11 @@
-mod aabb;
+mod collision;
 mod chunk;
 mod chunk_manager;
 mod player;
 
-use aabb::Aabb;
 use chunk::TILE_SIZE;
 use chunk_manager::{get_chunk_position, ChunkManager};
+use collision::bounding_box::AxisAlignedRectangle;
 use macroquad::prelude::*;
 
 use player::Player;
@@ -19,7 +19,7 @@ fn window_conf() -> Conf {
     };
     // Some(0) if you want to disable VSync
     // None if you want to enable VSync
-    conf.platform.swap_interval = Some(0);
+    conf.platform.swap_interval = None;
     return conf;
 }
 
@@ -67,18 +67,21 @@ async fn main() {
 
         camera.target = player.get_position();
 
-        // Only get position when mouse moves inside the window
         if mouse_delta_position().length() > 0.0 {
             mouse_pos = Some(vec2(mouse_position().0, mouse_position().1));
         }
 
-        let screen_top_left =
-            camera.screen_to_world(vec2(screen_width() / 2.0, screen_height() / 2.0));
-        let screen_bottom_right = camera.screen_to_world(vec2(screen_width(), screen_height()));
-        let screen_aabb = Aabb::new(
-            screen_top_left,
-            (screen_bottom_right - screen_top_left).abs(),
-        );
+        let screen_bottom_right_srcpos = Vec2 {y: screen_height(), x: screen_width()};
+        let screen_bottom_right_worldpos = camera.screen_to_world(screen_bottom_right_srcpos);
+        let screen_top_left_worldpos = camera.screen_to_world(Vec2 { x: 0.0, y: 0.0 });
+        let screen_aabb = AxisAlignedRectangle {
+            center_pos: camera.screen_to_world(screen_bottom_right_srcpos / 2.0),
+            size:  Mat2 {
+                x_axis: Vec2 { x: 1.0, y: 0.0 },
+                y_axis: Vec2 { x: 0.0, y: -1.0 },
+            } * (screen_bottom_right_worldpos - screen_top_left_worldpos),
+        };
+
 
         chunk_manager.load_chunks_on_screen(&screen_aabb).await;
 
@@ -120,11 +123,11 @@ async fn main() {
         } else {
             let mut strings = vec![
                 format!("FPS: {}", get_fps()),
-                format!("Position: {}", player.aabb.position),
+                format!("Position: {}", player.bounding_box.center_pos),
                 format!("Zoom: {}x", zoom),
                 "\n".to_string(),
-                format!("Block position: {}", (player.aabb.position / TILE_SIZE as f32).floor().as_ivec2()),
-                format!("Chunk position: {}", get_chunk_position((player.aabb.position / TILE_SIZE as f32).floor().as_ivec2())),
+                format!("Block position: {}", (player.bounding_box.center_pos / TILE_SIZE as f32).floor().as_ivec2()),
+                format!("Chunk position: {}", get_chunk_position((player.bounding_box.center_pos / TILE_SIZE as f32).floor().as_ivec2())),
                 "\n".to_string(),
                 format!(
                     "Loaded Chunks: {}",

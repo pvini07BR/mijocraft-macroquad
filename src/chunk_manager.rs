@@ -1,7 +1,4 @@
-use crate::{
-    aabb::Aabb,
-    chunk::{Chunk, CHUNK_AREA, CHUNK_WIDTH, TILE_SIZE},
-};
+use crate::{chunk::{Chunk, CHUNK_AREA, CHUNK_WIDTH, TILE_SIZE}, collision::{bounding_box::AxisAlignedRectangle, RectangleCorners}};
 use macroquad::prelude::*;
 use noise::{HybridMulti, NoiseFn, Perlin};
 use std::collections::HashMap;
@@ -19,15 +16,12 @@ impl ChunkManager {
         }
     }
 
-    pub fn draw(&self, screen_aabb: &Aabb, debug: bool) {
+    pub fn draw(&self, screen_aabb: &AxisAlignedRectangle, debug: bool) {
         // Only render chunks that are inside the screen!!!
         // ================================================
-        for chunk in self.chunks.values() {
-            if screen_aabb.intersects(&chunk.aabb) {
-                chunk.draw(debug);
-            }
-            //chunk.aabb.debug_draw(RED);
-        }
+        self.chunks.values()
+            .filter(|chunk| screen_aabb.intersects(&chunk.aabb))
+            .for_each(|chunk| chunk.draw(debug))
     }
 
     pub fn set_block(&mut self, block_position: IVec2, block_type: usize) {
@@ -112,9 +106,8 @@ impl ChunkManager {
         self.create_chunk(pos, blocks).await;
     }
 
-    pub async fn load_chunks_on_screen(&mut self, screen_aabb: &Aabb) {
-        let top_left = screen_aabb.position - screen_aabb.half_size;
-        let bottom_right = screen_aabb.position + screen_aabb.half_size;
+    pub async fn load_chunks_on_screen(&mut self, screen_aabb: &AxisAlignedRectangle) {
+        let RectangleCorners {top_left, bottom_right, ..} = screen_aabb.as_drectangle().corners();
 
         let top_left_block = (top_left / TILE_SIZE as f32).floor().as_ivec2();
         let bottom_right_block = (bottom_right / TILE_SIZE as f32).floor().as_ivec2();
@@ -122,10 +115,11 @@ impl ChunkManager {
         let top_left_chunk = get_chunk_position(top_left_block);
         let bottom_right_chunk = get_chunk_position(bottom_right_block);
 
-        for y in top_left_chunk.y..=bottom_right_chunk.y {
+        for y in bottom_right_chunk.y..=top_left_chunk.y {
             for x in top_left_chunk.x..=bottom_right_chunk.x {
-                if !self.chunks.contains_key(&ivec2(x, y)) {
-                    self.generate_chunk(ivec2(x, y)).await;
+                let chunk = IVec2 {x, y};
+                if !self.chunks.contains_key(&chunk) {
+                    self.generate_chunk(chunk).await;
                 }
             }
         }
@@ -133,7 +127,7 @@ impl ChunkManager {
         self.unload_unseen_chunks(screen_aabb);
     }
 
-    pub fn unload_unseen_chunks(&mut self, screen_aabb: &Aabb) {
+    pub fn unload_unseen_chunks(&mut self, screen_aabb: &AxisAlignedRectangle) {
         let mut chunk_poses_to_delete: Vec<IVec2> = vec![];
         for (chunk_pos, chunk) in self.chunks.iter() {
             if !screen_aabb.intersects(&chunk.aabb) {

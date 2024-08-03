@@ -2,28 +2,32 @@ use std::f32::consts::FRAC_PI_2;
 
 use macroquad::prelude::*;
 
-use crate::{aabb::Aabb, chunk::TILE_SIZE, chunk_manager::ChunkManager};
+use crate::{
+    chunk::TILE_SIZE,
+    chunk_manager::ChunkManager,
+    collision::{self, bounding_box::AxisAlignedRectangle},
+};
 
 pub struct Player {
     pub velocity: Vec2,
     pub floored: bool,
     pub direction: isize,
-    pub sprite_rotation: f32, // In radians?!
+    pub sprite_rotation: f32,
     pub noclip: bool,
-    pub aabb: Aabb,
+    pub bounding_box: AxisAlignedRectangle,
 }
 
 impl Player {
-    pub fn new(position: Vec2) -> Player {
+    pub fn new(center_pos: Vec2) -> Player {
         Player {
             velocity: Vec2::ZERO,
             floored: false,
             direction: 0,
             sprite_rotation: 0.0,
             noclip: false,
-            aabb: Aabb {
-                position,
-                half_size: Vec2::splat((TILE_SIZE as f32 - 8.0) / 2.0),
+            bounding_box: AxisAlignedRectangle {
+                center_pos,
+                size: Vec2::splat(TILE_SIZE as f32 - 8.0),
             },
         }
     }
@@ -105,16 +109,17 @@ impl Player {
 
     fn move_player(&mut self, chunk_manager: &ChunkManager) {
         if self.noclip {
-            self.aabb.position += self.velocity * get_frame_time();
+            self.bounding_box.center_pos += self.velocity * get_frame_time();
             return;
         }
+        let collision::RectangleCorners {
+            top_right,
+            top_left,
+            bottom_right,
+            bottom_left,
+        } = self.bounding_box.as_drectangle().corners();
 
         self.floored = false;
-
-        let bottom_left = self.aabb.position - self.aabb.half_size;
-        let bottom_right = self.aabb.position + vec2(self.aabb.half_size.x, -self.aabb.half_size.y);
-        let top_right = self.aabb.position + self.aabb.half_size;
-        let top_left = self.aabb.position + vec2(-self.aabb.half_size.x, self.aabb.half_size.y);
 
         let get_corner_overlap =
             |corner: Vec2, add_x: bool, add_y: bool, velocity: Vec2| -> Option<(Vec2, Vec2)> {
@@ -133,20 +138,20 @@ impl Player {
             };
 
         let mut solve_collision = |corner: Vec2, add_x: bool, add_y: bool| {
-            if let Some((overlap, collided_block_pos)) =
+            let Some((overlap, collided_block_pos)) =
                 get_corner_overlap(corner, add_x, add_y, self.velocity)
-            {
-                let min = overlap.x.min(overlap.y);
-                if min == overlap.x {
-                    self.velocity.x = 0.0;
-                    self.aabb.position.x -= corner.x - collided_block_pos.x;
-                } else if min == overlap.y {
-                    self.velocity.y = 0.0;
-                    self.aabb.position.y -= corner.y - collided_block_pos.y;
-
-                    if add_y {
-                        self.floored = true;
-                    }
+            else {
+                return;
+            };
+            let min = overlap.x.min(overlap.y);
+            if min == overlap.x {
+                self.velocity.x = 0.0;
+                self.bounding_box.center_pos.x -= corner.x - collided_block_pos.x;
+            } else if min == overlap.y {
+                self.velocity.y = 0.0;
+                self.bounding_box.center_pos.y -= corner.y - collided_block_pos.y;
+                if add_y {
+                    self.floored = true
                 }
             }
         };
@@ -156,24 +161,16 @@ impl Player {
         solve_collision(top_right, false, false);
         solve_collision(top_left, true, false);
 
-        self.aabb.position += self.velocity * get_frame_time();
+        self.bounding_box.center_pos += self.velocity * get_frame_time();
     }
 
     pub fn draw(&self) {
-        draw_rectangle_ex(
-            self.aabb.position.x,
-            self.aabb.position.y,
-            self.aabb.half_size.x * 2.0,
-            self.aabb.half_size.y * 2.0,
-            DrawRectangleParams {
-                offset: Vec2::splat(0.5),
-                rotation: self.sprite_rotation,
-                color: RED,
-            },
-        );
+        self.bounding_box
+            .as_drectangle()
+            .draw_center_rotated(RED, self.sprite_rotation);
     }
 
     pub fn get_position(&self) -> Vec2 {
-        self.aabb.position
+        self.bounding_box.center_pos
     }
 }
