@@ -87,7 +87,7 @@ async fn main() {
             } * (screen_bottom_right_worldpos - screen_top_left_worldpos),
         };
 
-        chunk_manager.load_chunks_on_screen(&screen_aabb).await;
+        chunk_manager.load_chunks_on_screen(&screen_aabb);
 
         if let Some(pos) = mouse_pos {
             let world_pos = camera.screen_to_world(pos);

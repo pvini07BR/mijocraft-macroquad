@@ -45,7 +45,7 @@ pub struct Chunk {
 }
 
 impl Chunk {
-    pub async fn new(position: IVec2, foreground_blocks: [usize; CHUNK_AREA], background_blocks: [usize; CHUNK_AREA], texture_atlas: Texture2D) -> Chunk {
+    pub fn new(position: IVec2, foreground_blocks: [usize; CHUNK_AREA], background_blocks: [usize; CHUNK_AREA], texture_atlas: Texture2D) -> Chunk {
         const CHUNK_WORLD_WIDTH: f32 = CHUNK_WIDTH as f32 * TILE_SIZE as f32;
         let mut indices = [0; CHUNK_AREA * 6];
         let mut offset: usize = 0;

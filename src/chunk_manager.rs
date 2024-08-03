@@ -61,10 +61,10 @@ impl ChunkManager {
         return self.chunks.len();
     }
 
-    pub async fn create_chunk(&mut self, chunk_position: IVec2, foreground_blocks: [usize; CHUNK_AREA], background_blocks: [usize; CHUNK_AREA]) {
+    pub fn create_chunk(&mut self, chunk_position: IVec2, foreground_blocks: [usize; CHUNK_AREA], background_blocks: [usize; CHUNK_AREA]) {
         self.chunks.insert(
             chunk_position,
-            Chunk::new(chunk_position, foreground_blocks, background_blocks, self.blocks_atlas_texture.clone()).await,
+            Chunk::new(chunk_position, foreground_blocks, background_blocks, self.blocks_atlas_texture.clone()),
         );
     }
 
@@ -73,7 +73,7 @@ impl ChunkManager {
         self.chunks.shrink_to_fit();
     }
 
-    pub async fn generate_chunk(&mut self, pos: IVec2) {
+    pub fn generate_chunk(&mut self, pos: IVec2) {
         let mut foreground_blocks: [usize; 256] = [0; CHUNK_AREA];
         let mut background_blocks: [usize; 256] = [0; CHUNK_AREA];
 
@@ -121,10 +121,10 @@ impl ChunkManager {
             }
         }
 
-        self.create_chunk(pos, foreground_blocks, background_blocks).await;
+        self.create_chunk(pos, foreground_blocks, background_blocks);
     }
 
-    pub async fn load_chunks_on_screen(&mut self, screen_aabb: &AxisAlignedRectangle) {
+    pub fn load_chunks_on_screen(&mut self, screen_aabb: &AxisAlignedRectangle) {
         let RectangleCorners {
             top_left,
             bottom_right,
@@ -141,7 +141,7 @@ impl ChunkManager {
             for x in top_left_chunk.x..=bottom_right_chunk.x {
                 let chunk = IVec2 { x, y };
                 if !self.chunks.contains_key(&chunk) {
-                    self.generate_chunk(chunk).await;
+                    self.generate_chunk(chunk);
                 }
             }
         }
