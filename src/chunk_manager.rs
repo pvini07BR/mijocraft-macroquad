@@ -1,4 +1,7 @@
-use crate::{chunk::{Chunk, CHUNK_AREA, CHUNK_WIDTH, TILE_SIZE}, collision::{bounding_box::AxisAlignedRectangle, RectangleCorners}};
+use crate::{
+    chunk::{Chunk, CHUNK_AREA, CHUNK_WIDTH, TILE_SIZE},
+    collision::{bounding_box::AxisAlignedRectangle, RectangleCorners},
+};
 use macroquad::prelude::*;
 use noise::{HybridMulti, NoiseFn, Perlin};
 use std::collections::HashMap;
@@ -19,7 +22,8 @@ impl ChunkManager {
     pub fn draw(&self, screen_aabb: &AxisAlignedRectangle, debug: bool) {
         // Only render chunks that are inside the screen!!!
         // ================================================
-        self.chunks.values()
+        self.chunks
+            .values()
             .filter(|chunk| screen_aabb.intersects(&chunk.aabb))
             .for_each(|chunk| chunk.draw(debug))
     }
@@ -107,7 +111,11 @@ impl ChunkManager {
     }
 
     pub async fn load_chunks_on_screen(&mut self, screen_aabb: &AxisAlignedRectangle) {
-        let RectangleCorners {top_left, bottom_right, ..} = screen_aabb.as_drectangle().corners();
+        let RectangleCorners {
+            top_left,
+            bottom_right,
+            ..
+        } = screen_aabb.as_drectangle().corners();
 
         let top_left_block = (top_left / TILE_SIZE as f32).floor().as_ivec2();
         let bottom_right_block = (bottom_right / TILE_SIZE as f32).floor().as_ivec2();
@@ -117,7 +125,7 @@ impl ChunkManager {
 
         for y in bottom_right_chunk.y..=top_left_chunk.y {
             for x in top_left_chunk.x..=bottom_right_chunk.x {
-                let chunk = IVec2 {x, y};
+                let chunk = IVec2 { x, y };
                 if !self.chunks.contains_key(&chunk) {
                     self.generate_chunk(chunk).await;
                 }

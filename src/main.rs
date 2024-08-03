@@ -1,6 +1,6 @@
-mod collision;
 mod chunk;
 mod chunk_manager;
+mod collision;
 mod player;
 
 use chunk::TILE_SIZE;
@@ -71,17 +71,19 @@ async fn main() {
             mouse_pos = Some(vec2(mouse_position().0, mouse_position().1));
         }
 
-        let screen_bottom_right_srcpos = Vec2 {y: screen_height(), x: screen_width()};
+        let screen_bottom_right_srcpos = Vec2 {
+            y: screen_height(),
+            x: screen_width(),
+        };
         let screen_bottom_right_worldpos = camera.screen_to_world(screen_bottom_right_srcpos);
         let screen_top_left_worldpos = camera.screen_to_world(Vec2 { x: 0.0, y: 0.0 });
         let screen_aabb = AxisAlignedRectangle {
             center_pos: camera.screen_to_world(screen_bottom_right_srcpos / 2.0),
-            size:  Mat2 {
+            size: Mat2 {
                 x_axis: Vec2 { x: 1.0, y: 0.0 },
                 y_axis: Vec2 { x: 0.0, y: -1.0 },
             } * (screen_bottom_right_worldpos - screen_top_left_worldpos),
         };
-
 
         chunk_manager.load_chunks_on_screen(&screen_aabb).await;
 
@@ -126,15 +128,27 @@ async fn main() {
                 format!("Position: {}", player.bounding_box.center_pos),
                 format!("Zoom: {}x", zoom),
                 "\n".to_string(),
-                format!("Block position: {}", (player.bounding_box.center_pos / TILE_SIZE as f32).floor().as_ivec2()),
-                format!("Chunk position: {}", get_chunk_position((player.bounding_box.center_pos / TILE_SIZE as f32).floor().as_ivec2())),
+                format!(
+                    "Block position: {}",
+                    (player.bounding_box.center_pos / TILE_SIZE as f32)
+                        .floor()
+                        .as_ivec2()
+                ),
+                format!(
+                    "Chunk position: {}",
+                    get_chunk_position(
+                        (player.bounding_box.center_pos / TILE_SIZE as f32)
+                            .floor()
+                            .as_ivec2()
+                    )
+                ),
                 "\n".to_string(),
                 format!(
                     "Loaded Chunks: {}",
                     chunk_manager.get_loaded_chunks_amount()
                 ),
             ];
-            
+
             if let Some(pos) = block_mouse_pos {
                 strings.insert(2, format!("Cursor position: {}", pos));
             }
@@ -148,7 +162,13 @@ async fn main() {
                     let margin = 5.0;
                     let pos = vec2(margin, cur_y);
 
-                    draw_rectangle(pos.x - margin, (pos.y - size.offset_y) - margin, size.width + margin, size.height + (margin*2.0), color_u8!(0.0, 0.0, 0.0, 128.0));
+                    draw_rectangle(
+                        pos.x - margin,
+                        (pos.y - size.offset_y) - margin,
+                        size.width + margin,
+                        size.height + (margin * 2.0),
+                        color_u8!(0.0, 0.0, 0.0, 128.0),
+                    );
                     draw_text(s.as_str(), pos.x, pos.y, font_size as f32, WHITE);
                 }
             }

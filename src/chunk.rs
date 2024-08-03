@@ -36,7 +36,10 @@ impl Chunk {
 
         let bottom_left_worldpos = position.as_vec2() * CHUNK_WORLD_WIDTH;
         let size = Vec2::splat(CHUNK_WORLD_WIDTH);
-        let chunk_aabb = AxisAlignedRectangle { center_pos: bottom_left_worldpos + size*0.5, size };
+        let chunk_aabb = AxisAlignedRectangle {
+            center_pos: bottom_left_worldpos + size * 0.5,
+            size,
+        };
 
         let mut new_chunk = Chunk {
             blocks,
