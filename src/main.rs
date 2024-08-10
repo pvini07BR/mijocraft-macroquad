@@ -5,7 +5,7 @@ mod player;
 
 use chunk::{ChunkLayer, TILE_SIZE};
 use chunk_manager::{get_chunk_position, ChunkManager};
-use collision::bounding_box::AxisAlignedRectangle;
+use collision::{bounding_box::AxisAlignedRectangle, cast_ray_blocks};
 use macroquad::prelude::*;
 
 use player::Player;
@@ -51,11 +51,11 @@ async fn main() {
         if is_key_down(KeyCode::LeftControl) {
             if mouse_wheel().1 > 0.0 {
                 zoom += 0.05;
-                zoom = clamp(zoom, 0.05, 8.0);
             } else if mouse_wheel().1 < 0.0 {
                 zoom -= 0.05;
-                zoom = clamp(zoom, 0.05, 8.0);
             }
+
+            zoom = clamp(zoom, 0.05, 8.0);
         }
 
         camera.zoom = vec2(
@@ -110,6 +110,7 @@ async fn main() {
         chunk_manager.draw(&screen_aabb, debug_f3);
         player.draw();
 
+
         if let Some(pos) = block_mouse_pos {
             draw_rectangle(
                 pos.x as f32 * TILE_SIZE as f32,
@@ -119,7 +120,6 @@ async fn main() {
                 Color::new(1.0, 1.0, 1.0, 0.5),
             );
         }
-        //screen_aabb.debug_draw(BLUE);
 
         set_default_camera();
         if !debug_f3 {
